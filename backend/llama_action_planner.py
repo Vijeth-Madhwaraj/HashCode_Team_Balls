@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # -------------------------
 # Init & config
 # -------------------------
-load_dotenv()  # load any existing .env
+load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 TASKS_DIR = "tasks"
@@ -82,6 +82,42 @@ def remove_urls(obj):
         return re.sub(r"https?://\S+", "<website>", obj)
     return obj
 
+def replace_urls_with_service(obj):
+    """
+    Recursively replace URLs or plain service names with proper capitalized service names.
+    """
+    service_map = {
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "youtube": "YouTube",
+        "twitter": "Twitter",
+        "gmail": "Gmail",
+        "linkedin": "LinkedIn",
+        "tiktok": "TikTok"
+    }
+
+    if isinstance(obj, dict):
+        return {k: replace_urls_with_service(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [replace_urls_with_service(v) for v in obj]
+    if isinstance(obj, str):
+        # First, replace URLs
+        def url_to_service(match):
+            url = match.group(0).lower()
+            for domain, name in service_map.items():
+                if domain in url:
+                    return name
+            return "<website>"
+        obj = re.sub(r"https?://\S+", url_to_service, obj)
+
+        # Then, replace plain mentions of service names
+        for key, name in service_map.items():
+            pattern = re.compile(rf"\b{key}\b", re.IGNORECASE)
+            obj = pattern.sub(name, obj)
+
+        return obj
+    return obj
+
 def store_in_env(key: str, value: str):
     lines = []
     if os.path.exists(ENV_FILE):
@@ -109,16 +145,29 @@ def resolve_secret(value: str) -> str:
         return os.getenv(key, "")
     return value
 
+# -------------------------
+# Credential handling
+# -------------------------
 def extract_credentials_from_instruction(instruction: str):
-    username = None
+    """
+    Extract identifiers (username, email, Indian phone) and password from instruction.
+    Robustly handles multiple natural-language variants.
+    """
+    usernames = re.findall(r"(?:username|user|login as)\s+['\"]?([^\s,'\"]+)['\"]?", instruction, re.IGNORECASE)
+    emails = re.findall(r"[\w\.-]+@[\w\.-]+\.\w+", instruction)
+    phones = re.findall(r"(?:\+91|0)?[6-9]\d{9}", instruction)
+    # Password patterns
+    pwd_pattern = (
+        r"(?:password|pass)\b\s*(?:set|to|is|=|:)?\s*['\"]?(.+?)['\"]?"
+        r"(?=(?:\s*(?:and|,|\busername\b|\buser\b|\bemail\b|\bmail\b|\bphone\b|\bnumber\b)|$))"
+    )
+    pwd_matches = re.findall(pwd_pattern, instruction, flags=re.IGNORECASE)
     password = None
-    u_match = re.search(r"(?:username|user|login as)\s+['\"]?([^\s,'\"]+)['\"]?", instruction, re.IGNORECASE)
-    p_match = re.search(r"(?:password|pass)\s+['\"]?([^\s,'\"]+)['\"]?", instruction, re.IGNORECASE)
-    if u_match:
-        username = u_match.group(1)
-    if p_match:
-        password = p_match.group(1)
-    return username, password
+    if pwd_matches:
+        candidate = pwd_matches[-1].strip()
+        if candidate.lower() not in {"to", "and", "was", "is", "set", ""}:
+            password = candidate.rstrip(".;")
+    return {"usernames": usernames, "emails": emails, "phones": phones, "password": password}
 
 def detect_service_from_text(text: str, fallback: str = "GENERAL"):
     if not text:
@@ -127,26 +176,37 @@ def detect_service_from_text(text: str, fallback: str = "GENERAL"):
     return match.group(1).upper() if match else fallback.upper()
 
 def handle_login_credentials(plan_json: dict, instruction: str):
+    creds = extract_credentials_from_instruction(instruction)
     steps = plan_json.get("steps", [])
     task_name = plan_json.get("task", "GENERAL")
-    instr_user, instr_pass = extract_credentials_from_instruction(instruction)
+
     for step in steps:
         if step.get("action") != "type":
             continue
         target = (step.get("target") or "").lower()
         current_value = step.get("value", "")
+
         service = detect_service_from_text(target, fallback=task_name)
 
-        if "username" in target or re.search(r"\b(user|email|login)\b", target):
-            env_key = f"USERNAME_{service}"
-            real_value = instr_user or (current_value if current_value and not re.match(r"^\$\{.+\}$", current_value) else input(f"Enter username for {service}: ").strip())
-            if real_value:
-                store_in_env(env_key, real_value)
-                step["value"] = f"${{{env_key}}}"
+        # Assign correct identifier
+        if "username" in target or re.search(r"\buser\b", target):
+            value_to_use = creds["usernames"][0] if creds["usernames"] else current_value
+            if value_to_use:
+                step["value"] = value_to_use
+
+        elif "mail" in target or "email" in target:
+            value_to_use = creds["emails"][0] if creds["emails"] else current_value
+            if value_to_use:
+                step["value"] = value_to_use
+
+        elif "phone" in target or "number" in target:
+            value_to_use = creds["phones"][0] if creds["phones"] else current_value
+            if value_to_use:
+                step["value"] = value_to_use
 
         elif "password" in target or re.search(r"\b(pass|pwd)\b", target):
             env_key = f"PASSWORD_{service}"
-            real_value = instr_pass or (current_value if current_value and not re.match(r"^\$\{.+\}$", current_value) else getpass.getpass(f"Enter password for {service}: ").strip())
+            real_value = creds["password"] or (current_value if current_value and not re.match(r"^\$\{.+\}$", current_value) else getpass.getpass(f"Enter password for {service}: ").strip())
             if real_value:
                 store_in_env(env_key, real_value)
                 step["value"] = f"${{{env_key}}}"
@@ -178,7 +238,7 @@ def save_stepwise_text(task_name: str, text: str):
 # -------------------------
 # Task management
 # -------------------------
-def generate_task_plan(instruction: str, max_steps: int = 20):
+def generate_task_plan(instruction: str, existing_task_name: str = None, max_steps: int = 20):
     prompt = f"""
 Convert the following instruction into a structured JSON action plan for web automation.
 Instruction: "{instruction}"
@@ -198,13 +258,19 @@ Instruction: "{instruction}"
     raw = ai_generate(prompt)
     plan = clean_json_response(raw)
     plan = remove_urls(plan)
+    plan = replace_urls_with_service(plan)
     plan = handle_login_credentials(plan, instruction)
-    task_name = plan.get("task", "unnamed_task").replace(" ", "_").lower()
+
+    task_name = existing_task_name or plan.get("task", "unnamed_task").replace(" ", "_").lower()
+    plan["task"] = task_name
+
     json_path = os.path.join(TASKS_DIR, f"{task_name}.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(plan, f, indent=2)
+
     step_text = json_to_stepwise_text(plan)
     save_stepwise_text(task_name, step_text)
+
     print(f"✅ Task '{task_name}' saved to {json_path}")
     return plan
 
@@ -229,30 +295,36 @@ Keep the output strictly valid JSON only (no surrounding text).
     raw = ai_generate(prompt)
     updated = clean_json_response(raw)
     updated = remove_urls(updated)
+    updated = replace_urls_with_service(updated)
     updated = handle_login_credentials(updated, modification_instruction)
+    updated["task"] = task_name
+
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(updated, f, indent=2)
+
     step_text = json_to_stepwise_text(updated)
     save_stepwise_text(task_name, step_text)
     print(f"✅ Task '{task_name}' updated at {json_path}")
     return updated
 
-def choose_task() -> str:
-    tasks = [f[:-5] for f in os.listdir(TASKS_DIR) if f.endswith(".json")]
-    if not tasks:
-        print("❌ No tasks available.")
-        return None
-    for i, t in enumerate(tasks, start=1):
-        print(f"{i}. {t}")
-    choice = input("Select a task number: ").strip()
-    if not choice.isdigit() or not (1 <= int(choice) <= len(tasks)):
-        print("❌ Invalid choice.")
-        return None
-    return tasks[int(choice) - 1]
-
 # -------------------------
 # CLI / Main
 # -------------------------
+def choose_task():
+    files = [f[:-5] for f in os.listdir(TASKS_DIR) if f.endswith(".json")]
+    if not files:
+        print("⚠️ No tasks found.")
+        return None
+    print("Available tasks:")
+    for i, t in enumerate(files, start=1):
+        print(f"{i}. {t}")
+    choice = input("Choose a task by number: ").strip()
+    try:
+        idx = int(choice) - 1
+        return files[idx] if 0 <= idx < len(files) else None
+    except:
+        return None
+
 if __name__ == "__main__":
     print("Welcome! Options:\n1. Add Task\n2. Modify Task\n3. Edit JSON directly (Developer Mode)")
     opt = input("Choose an option (1/2/3): ").strip()
