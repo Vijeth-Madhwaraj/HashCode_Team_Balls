@@ -14,6 +14,39 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 TASKS_DIR = "tasks"
 ENV_FILE = ".env"
 os.makedirs(TASKS_DIR, exist_ok=True)
+def save_readable_stepwise_text(task_name: str, plan_json: dict):
+    """
+    Save a human-readable version of the task plan to a .txt file.
+    Passwords are masked.
+    """
+    lines = []
+    steps = plan_json.get("steps", [])
+    if not steps:
+        lines.append("⚠️ No steps found in the task plan.")
+    else:
+        for i, step in enumerate(steps, start=1):
+            action = step.get("action", "<action>")
+            target = step.get("target", "<target>")
+            value = step.get("value", None)
+
+            # Mask passwords
+            display_value = None
+            if isinstance(value, str):
+                if "password" in target.lower():
+                    display_value = "*" * 8
+                else:
+                    display_value = value
+
+            line = f"Step {i}: {action.capitalize()} -> {target}"
+            if display_value:
+                line += f" | Value: {display_value}"
+            lines.append(line)
+
+    out_path = os.path.join("tasks", f"{task_name}_readable.txt")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    print(f"✅ Human-readable plan saved to {out_path}")
 
 
 # -------------------------
@@ -31,6 +64,28 @@ def ai_generate(prompt: str) -> str:
             text += chunk.text
     return text
 
+
+# llama_action_planner.py
+
+def execute_task(task_name: str):
+    """
+    Execute a saved task plan by task_name.
+    This is a placeholder for actual automation logic.
+    """
+    import os, json
+    TASKS_DIR = "tasks"
+    path = os.path.join(TASKS_DIR, f"{task_name}.json")
+    if not os.path.exists(path):
+        print(f"❌ Task {task_name} not found")
+        return {"status": "error", "message": "task not found"}
+    
+    with open(path, "r", encoding="utf-8") as f:
+        plan = json.load(f)
+    
+    # Placeholder for executing steps
+    print(f"Executing task '{task_name}' with {len(plan.get('steps',[]))} steps...")
+    
+    return {"status": "success", "task": task_name, "steps_count": len(plan.get("steps", []))}
 
 def clean_json_response(raw_text: str) -> dict:
     """Extract JSON object from AI output; fall back to raw_text if parse fails."""
@@ -329,6 +384,7 @@ if __name__ == "__main__":
         task = choose_task()
         if task:
             mod = input("Describe what you want to modify: ").strip()
+
             updated = modify_task_plan(task, mod)
             if updated:
                 print("\n--- Updated Stepwise Task Plan ---\n")
