@@ -120,3 +120,47 @@ button.execute:hover { background:#e08f50; }
 .status.error { color:#ff6b6b; } /* red */
 
 .placeholder { text-align:center; color:#aaa; margin-top:50px; }
+/* Status Sphere */
+.status-indicator {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7f8c8d; /* default gray */
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+/* Different states */
+.status-indicator.idle { 
+  background: #6edc82;  /* green */
+  box-shadow: 0 0 8px #6edc82, 0 0 12px #6edc82a0;
+}
+
+.status-indicator.generating { 
+  background: #ffa54f;  /* soft orange */
+  box-shadow: 0 0 10px #ffa54f, 0 0 20px #ffa54fa0;
+  animation: pulse 1s infinite ease-in-out;
+}
+
+.status-indicator.executing { 
+  background: #7aa6ff;  /* blue */
+  box-shadow: 0 0 10px #7aa6ff, 0 0 20px #7aa6ffa0;
+  animation: pulse 1s infinite ease-in-out;
+}
+
+.status-indicator.error { 
+  background: #ff6b6b;  /* red */
+  box-shadow: 0 0 12px #ff6b6b, 0 0 24px #ff6b6ba0;
+  animation: pulse 0.8s infinite ease-in-out;
+}
+
+/* Smooth pulsing animation */
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
