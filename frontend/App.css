@@ -1,166 +1,234 @@
+/* ---------------------------
+   Global / App container
+---------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700&display=swap');
+
 body, html {
-  margin:0; padding:0;
-  font-family:'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  background:#2c2c3a; /* dark slate */
-  color:#e0e0e0; /* light gray */
+  margin: 0;
+  padding: 0;
+  font-family: 'Lato', Arial, sans-serif;
+  background-color: #f2f2f2; /* fallback */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #2c3e50; /* slightly lighter dark text */
 }
 
 .app-container {
-  display:flex;
-  height:100vh;
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  backdrop-filter: blur(2px);
+  background-color: rgba(242,242,242,0.75); /* soft overlay for readability */
 }
 
-/* Left Sidebar */
+/* ---------------------------
+   Sidebar
+---------------------------- */
 .sidebar {
-  width:280px;
-  background:#3a3a50; /* muted blue-gray */
-  border-right:2px solid #7aa6ff; /* soft cyan */
-  display:flex;
-  flex-direction:column;
-  padding:15px;
+  width: 220px;
+  background-color: rgba(224,224,224,0.85);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #ccc;
+  box-shadow: 2px 0 6px rgba(0,0,0,0.08);
 }
 
-.sidebar h2 { 
-  color:#7aa6ff; 
-  text-align:center; 
-  margin-bottom:15px; 
-  font-weight:600;
+.sidebar h2 {
+  margin-top: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e6fc0; /* lighter blue */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.task-list { flex:1; list-style:none; padding:0; overflow-y:auto; }
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 20px 0;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
 .task-item {
-  padding:10px; 
-  margin-bottom:8px; 
-  background:#4a4a66;
-  border-radius:6px;
-  cursor:pointer;
-  transition:0.2s;
-  color:#e0e0e0;
-}
-.task-item:hover { 
-  background:#555577;
-}
-.task-item.active { 
-  background:#7aa6ff44; 
-  border:1px solid #7aa6ff; 
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* Add Task */
-.add-task h3 { color:#ffad6a; margin-top:10px; font-weight:600; } /* soft orange */
-.add-task input { 
-  width:100%; padding:8px; margin-bottom:6px; 
-  border:1px solid #666; border-radius:6px; 
-  background:#3a3a50; color:#e0e0e0; 
-}
-.add-task button { 
-  width:100%; padding:8px; border:none; border-radius:6px; 
-  background:#7aa6ff; color:#fff; cursor:pointer; font-weight:600;
-  transition:0.2s;
-}
-.add-task button:hover { 
-  background:#5c8de0; 
+.task-item:hover {
+  background-color: #d9e6f7; /* subtle bluish hover */
 }
 
-/* Right Main Panel */
+.task-item.active {
+  background-color: #a8c6ff;
+  font-weight: 600;
+}
+
+.add-task h3 {
+  margin: 15px 0 8px 0;
+  font-size: 1.1rem;
+  color: #1e6fc0;
+}
+
+.add-task input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+}
+
+/* ---------------------------
+   Main panel
+---------------------------- */
 .main-panel {
-  flex:1;
-  padding:20px;
-  overflow-y:auto;
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: rgba(255,255,255,0.85);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-.task-title { 
-  color:#7aa6ff; 
-  margin-bottom:12px; 
-  border-bottom:2px solid #7aa6ff;
-  padding-bottom:5px;
-  font-weight:600;
+.main-panel h2.task-title {
+  margin-top: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1e6fc0;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.05);
+}
+
+.main-panel h3 {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  color: #1e6fc0;
 }
 
 .developer-text {
-  background:#3a3a50; 
-  padding:12px; 
-  border-radius:6px; 
-  max-height:200px; 
-  overflow-y:auto; 
-  white-space:pre-wrap;
-  color:#dcdcdc; /* light gray text */
-  border:1px solid #666;
+  background-color: rgba(232,232,232,0.95);
+  padding: 12px;
+  border-radius: 5px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin-bottom: 15px;
+  color: #222;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
 }
 
+/* ---------------------------
+   Inputs & JSON editor
+---------------------------- */
 input[type="text"], textarea {
-  width:100%; 
-  padding:8px; 
-  margin-bottom:8px; 
-  border:1px solid #666; 
-  border-radius:6px; 
-  background:#3a3a50; 
-  color:#e0e0e0;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  font-family: 'Lato', sans-serif;
+  font-size: 1rem;
+  box-sizing: border-box;
 }
-textarea { height:200px; font-family:'Courier New', monospace; }
 
-.button-group { display:flex; gap:12px; margin-bottom:12px; }
-button { 
-  border:none; 
-  background:#7aa6ff; 
-  color:#fff; 
-  padding:8px 14px; 
-  border-radius:6px; 
-  cursor:pointer; 
-  font-weight:600;
-  transition:0.2s;
+textarea {
+  min-height: 150px;
+  resize: vertical;
 }
-button:hover { background:#5c8de0; }
-button.execute { background:#ffad6a; color:#fff; }
-button.execute:hover { background:#e08f50; }
 
-/* Footer */
-.footer { margin-top:20px; color:#aaa; }
-.status.idle { color:#6edc82; } /* green */
-.status.generating, .status.executing, .status.modifying { color:#ffa54f; } /* orange */
-.status.error { color:#ff6b6b; } /* red */
+/* ---------------------------
+   Buttons
+---------------------------- */
+button {
+  background: linear-gradient(145deg, #1e6fc0, #4a90e2); /* subtle gradient */
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+}
 
-.placeholder { text-align:center; color:#aaa; margin-top:50px; }
-/* Status Sphere */
+button:hover {
+  background: linear-gradient(145deg, #4a90e2, #1e6fc0);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.15);
+}
+
+button:active {
+  background: linear-gradient(145deg, #0f4b85, #1e6fc0);
+  transform: translateY(1px);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+button.execute {
+  background: linear-gradient(145deg, #1e6fc0, #4a90e2);
+}
+
+/* Button group spacing */
+.button-group {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+/* ---------------------------
+   JSON Editor Container
+---------------------------- */
+.json-editor {
+  margin-top: 10px;
+}
+
+/* ---------------------------
+   Footer & Status
+---------------------------- */
+.footer {
+  margin-top: 20px;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+/* Status colors */
 .status-indicator {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #7f8c8d; /* default gray */
-  box-shadow: 0 0 6px rgba(0,0,0,0.3);
-  transition: all 0.3s ease;
-  z-index: 1000;
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 
-/* Different states */
-.status-indicator.idle { 
-  background: #6edc82;  /* green */
-  box-shadow: 0 0 8px #6edc82, 0 0 12px #6edc82a0;
+.status-indicator.idle {
+  background-color: #b8b8b8;
 }
 
-.status-indicator.generating { 
-  background: #ffa54f;  /* soft orange */
-  box-shadow: 0 0 10px #ffa54f, 0 0 20px #ffa54fa0;
-  animation: pulse 1s infinite ease-in-out;
+.status-indicator.generating {
+  background-color: #ffa500;
 }
 
-.status-indicator.executing { 
-  background: #7aa6ff;  /* blue */
-  box-shadow: 0 0 10px #7aa6ff, 0 0 20px #7aa6ffa0;
-  animation: pulse 1s infinite ease-in-out;
+.status-indicator.modifying {
+  background-color: #ff8c00;
 }
 
-.status-indicator.error { 
-  background: #ff6b6b;  /* red */
-  box-shadow: 0 0 12px #ff6b6b, 0 0 24px #ff6b6ba0;
-  animation: pulse 0.8s infinite ease-in-out;
+.status-indicator.executing {
+  background-color: #5a5a5a;
 }
 
-/* Smooth pulsing animation */
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.5); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.8; }
+.status-indicator.error {
+  background-color: #e74c3c;
+}
+
+/* Placeholder text for main panel */
+.placeholder {
+  color: #666;
+  font-style: italic;
 }
