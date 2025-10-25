@@ -18,7 +18,7 @@ A modern web application that allows users to create automated web browsing task
 ## Tech Stack
 
 - **Frontend**: React, Axios, CSS (Lato font, greyish elegant theme)
-- **Backend**: Python, Flask, Flask-CORS, Playwright, LLM integration (custom scripts)
+- **Backend**: Python, FastAPI, Playwright, LLM integration (custom scripts)
 - **Other Tools**: Node.js, npm/yarn for frontend packages
 
 ### Prerequisites
