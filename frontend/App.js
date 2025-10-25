@@ -6,13 +6,23 @@ function App() {
   const [modification, setModification] = useState("");
   const [tasks, setTasks] = useState([]);
   const [currentTask, setCurrentTask] = useState(null);
-  const [status, setStatus] = useState("idle");
+  const [status, setStatus] = useState("idle"); // will control the sphere
   const [developerText, setDeveloperText] = useState("");
   const [showJSONEditor, setShowJSONEditor] = useState(false);
   const [editableJSON, setEditableJSON] = useState("");
 
-  const ACCENT_COLOR = '#00ffff';
+  // ---------- Helper to format steps ----------
+  const formatSteps = (steps) => {
+    if (!steps || !Array.isArray(steps)) return "";
+    return steps.map((step, i) => {
+      const val = step.value 
+        ? (step.target.toLowerCase().includes("password") ? "********" : step.value) 
+        : "";
+      return `Step ${i + 1}: ${step.action} -> ${step.target}${val ? ` | Value: ${val}` : ""}`;
+    }).join("\n");
+  };
 
+  // ---------- Fetch tasks ----------
   const refreshTasks = async () => {
     try {
       const res = await fetch("http://127.0.0.1:8000/list-tasks");
@@ -23,6 +33,7 @@ function App() {
 
   useEffect(() => { refreshTasks(); }, []);
 
+  // ---------- Add new task ----------
   const handleAddTask = async () => {
     if (!instruction) return;
     setStatus("generating");
@@ -34,12 +45,14 @@ function App() {
       });
       const plan = await res.json();
       setCurrentTask(plan);
+      setDeveloperText(formatSteps(plan.steps));
       setStatus("idle");
       setInstruction("");
       refreshTasks();
     } catch(err){ console.error(err); setStatus("error"); }
   };
 
+  // ---------- Modify existing task ----------
   const handleModifyTask = async () => {
     if (!currentTask || !modification) return;
     setStatus("modifying");
@@ -51,12 +64,14 @@ function App() {
       });
       const updated = await res.json();
       setCurrentTask(updated);
+      setDeveloperText(formatSteps(updated.steps));
       setStatus("idle");
       setModification("");
       refreshTasks();
     } catch(err){ console.error(err); setStatus("error"); }
   };
 
+  // ---------- Execute task ----------
   const handleExecuteTask = async () => {
     if (!currentTask) return;
     setStatus("executing");
@@ -72,22 +87,25 @@ function App() {
     } catch(err){ console.error(err); setStatus("error"); }
   };
 
+  // ---------- Developer view (read JSON) ----------
   const handleDeveloperView = async (taskName) => {
     try {
       const res = await fetch(`http://127.0.0.1:8000/developer-task/${taskName}`);
       const data = await res.json();
-      setDeveloperText(data.readable_text || "");
       setCurrentTask(data.plan);
+      setDeveloperText(formatSteps(data.plan.steps));
       setEditableJSON(JSON.stringify(data.plan, null, 2));
       setShowJSONEditor(false);
     } catch(err){ console.error(err); }
   };
 
+  // ---------- Execute edited JSON ----------
   const executeEditedJSON = async () => {
     if (!editableJSON) return;
     let parsed;
     try { parsed = JSON.parse(editableJSON); } 
-    catch(err){ alert("❌ Invalid JSON"); return; }
+    catch(err){ alert("Invalid JSON"); return; }
+
     setStatus("executing");
     try {
       const res = await fetch("http://127.0.0.1:8000/execute-json", {
@@ -97,17 +115,27 @@ function App() {
       });
       const result = await res.json();
       alert(JSON.stringify(result, null, 2));
+      setCurrentTask(parsed); // overwrite current task
+      setDeveloperText(formatSteps(parsed.steps));
       setStatus("idle");
       refreshTasks();
-      handleDeveloperView(parsed.task);
     } catch(err){ console.error(err); setStatus("error"); }
+  };
+
+  // ---------- Choose a task ----------
+  const chooseTask = () => {
+    if (tasks.length === 0) return null;
+    return tasks[0]; // optional: default selection, can adjust
   };
 
   return (
     <div className="app-container">
+      {/* Status Sphere */}
+      <span className={`status-indicator ${status}`}></span>
+
       {/* Left Sidebar */}
       <aside className="sidebar">
-        <h2>⚡ Tasks</h2>
+        <h2>Tasks</h2>
         <ul className="task-list">
           {tasks.map(t => (
             <li 
@@ -138,10 +166,10 @@ function App() {
           <>
             <h2 className="task-title">{currentTask.task}</h2>
 
-            <h3>🧠 Steps</h3>
+            <h3>Steps</h3>
             <pre className="developer-text">{developerText}</pre>
 
-            <h3>🛠 Modify Task</h3>
+            <h3>Modify Task</h3>
             <input 
               type="text" 
               placeholder="Modification instruction" 
@@ -153,7 +181,7 @@ function App() {
               <button className="execute" onClick={handleExecuteTask}>Execute</button>
             </div>
 
-            <h3>💾 Developer JSON</h3>
+            <h3>Developer JSON</h3>
             {!showJSONEditor ? (
               <button onClick={()=>setShowJSONEditor(true)}>Edit JSON</button>
             ) : (
@@ -172,10 +200,6 @@ function App() {
         ) : (
           <p className="placeholder">Select a task to view details</p>
         )}
-
-        <footer className="footer">
-          Status: <span className={`status ${status}`}>{status}</span>
-        </footer>
       </main>
     </div>
   );
