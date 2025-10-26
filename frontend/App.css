@@ -232,3 +232,16 @@ button.execute {
   color: #666;
   font-style: italic;
 }
+
+.video-player {
+  background: #1e1e1e;
+  color: #fff;
+  padding: 10px;
+  border-radius: 12px;
+  margin-top: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.btn-group button {
+  margin-right: 10px;
+}
