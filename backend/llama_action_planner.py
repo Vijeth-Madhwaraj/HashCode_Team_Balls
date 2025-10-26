@@ -73,18 +73,12 @@ def clean_json_response(raw_text: str) -> dict:
         print("⚠️ Warning: Failed to parse JSON, saving raw text instead")
         return {"raw_text": text_clean}
 
-def remove_urls(obj):
-    if isinstance(obj, dict):
-        return {k: remove_urls(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [remove_urls(v) for v in obj]
-    if isinstance(obj, str):
-        return re.sub(r"https?://\S+", "<website>", obj)
-    return obj
+# REMOVED remove_urls function
 
 def replace_urls_with_service(obj):
     """
-    Recursively replace URLs or plain service names with proper capitalized service names.
+    Recursively replace URLs or plain service names with proper capitalized service names,
+    but keep the URL if it's not a known service.
     """
     service_map = {
         "instagram": "Instagram",
@@ -103,11 +97,14 @@ def replace_urls_with_service(obj):
     if isinstance(obj, str):
         # First, replace URLs
         def url_to_service(match):
-            url = match.group(0).lower()
+            url = match.group(0)
+            url_lower = url.lower()
             for domain, name in service_map.items():
-                if domain in url:
+                if domain in url_lower:
                     return name
-            return "<website>"
+            # Return the original URL if it's not a known service
+            return url
+        
         obj = re.sub(r"https?://\S+", url_to_service, obj)
 
         # Then, replace plain mentions of service names
@@ -222,6 +219,7 @@ def json_to_stepwise_text(plan_json: dict) -> str:
         action = step.get("action", "<action>")
         target = step.get("target", "<target>")
         value = step.get("value", None)
+        # resolve_secret is still important for showing the actual value instead of ${ENV_VAR}
         display_value = "*" * 8 if isinstance(value, str) and "password" in target.lower() else resolve_secret(value)
         line = f"Step {i}: {action.capitalize()} -> {target}"
         if display_value:
@@ -257,7 +255,7 @@ Instruction: "{instruction}"
 """
     raw = ai_generate(prompt)
     plan = clean_json_response(raw)
-    plan = remove_urls(plan)
+    # plan = remove_urls(plan) # ❌ REMOVED THIS CALL
     plan = replace_urls_with_service(plan)
     plan = handle_login_credentials(plan, instruction)
 
@@ -294,7 +292,7 @@ Keep the output strictly valid JSON only (no surrounding text).
 """
     raw = ai_generate(prompt)
     updated = clean_json_response(raw)
-    updated = remove_urls(updated)
+    # updated = remove_urls(updated) # ❌ REMOVED THIS CALL
     updated = replace_urls_with_service(updated)
     updated = handle_login_credentials(updated, modification_instruction)
     updated["task"] = task_name
