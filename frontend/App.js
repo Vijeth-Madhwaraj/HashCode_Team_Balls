@@ -10,6 +10,7 @@ function App() {
   const [developerText, setDeveloperText] = useState("");
   const [showJSONEditor, setShowJSONEditor] = useState(false);
   const [editableJSON, setEditableJSON] = useState("");
+  const [videoUrl, setVideoUrl] = useState(null); 
 
   const refreshTasks = async () => {
     try {
@@ -32,6 +33,7 @@ function App() {
       });
       const plan = await res.json();
       setCurrentTask(plan);
+      setDeveloperText(plan.readable_text || "");
       setStatus("idle");
       setInstruction("");
       refreshTasks();
@@ -49,6 +51,7 @@ function App() {
       });
       const updated = await res.json();
       setCurrentTask(updated);
+      setDeveloperText(updated.readable_text || "");
       setStatus("idle");
       setModification("");
       refreshTasks();
@@ -70,6 +73,41 @@ function App() {
     } catch(err){ console.error(err); setStatus("error"); }
   };
 
+  const handleExecuteWithVideo = async () => {
+    if (!currentTask) return;
+    setStatus("executing-with-video");
+    setVideoUrl(null);
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/execute-task-with-video", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ task: currentTask.task })
+      });
+      const data = await res.json();
+
+      if (data.status === "success" && data.video) {
+        const url = `http://127.0.0.1:8000/get-video/${data.video}`;
+        setVideoUrl(url);
+        setStatus("video-ready");
+        window.open(url, "_blank");
+        alert(`✅ Video for task '${currentTask.task}' is ready!`);
+      } else {
+        const errorMessage = `Error: Video generation failed. ${data.message || ''}`;
+        const errorPage = `data:text/html;charset=utf-8,<html><body><h1>Task Failed</h1><p>${errorMessage}</p><button onclick="window.close()">Close Tab</button></body></html>`;
+        window.open(errorPage, "_blank");
+        alert("❌ Video generation failed. Check new tab.");
+        setStatus("error");
+      }
+    } catch(err) {
+      console.error(err);
+      const fatalPage = `data:text/html;charset=utf-8,<html><body><h1>Fatal Error</h1><p>${err.message}</p><button onclick="window.close()">Close Tab</button></body></html>`;
+      window.open(fatalPage, "_blank");
+      alert("❌ Fatal error occurred. Check new tab.");
+      setStatus("error");
+    }
+  };
+
   const handleDeveloperView = async (taskName) => {
     try {
       const res = await fetch(`http://127.0.0.1:8000/developer-task/${taskName}`);
@@ -78,6 +116,7 @@ function App() {
       setCurrentTask(data.plan);
       setEditableJSON(JSON.stringify(data.plan, null, 2));
       setShowJSONEditor(false);
+      setVideoUrl(null);
     } catch(err){ console.error(err); }
   };
 
@@ -86,6 +125,7 @@ function App() {
     let parsed;
     try { parsed = JSON.parse(editableJSON); } 
     catch(err){ alert("❌ Invalid JSON"); return; }
+
     setStatus("executing");
     try {
       const res = await fetch("http://127.0.0.1:8000/execute-json", {
@@ -151,6 +191,13 @@ function App() {
             <div className="button-group">
               <button onClick={handleModifyTask}>Modify</button>
               <button className="execute" onClick={handleExecuteTask}>Execute</button>
+              <button 
+                className="execute-video" 
+                onClick={handleExecuteWithVideo}
+                disabled={status === 'executing-with-video'}
+              >
+                {status === 'executing-with-video' ? 'Generating...' : '🎥 Run with Video'}
+              </button>
             </div>
 
             <h3>Developer JSON</h3>
